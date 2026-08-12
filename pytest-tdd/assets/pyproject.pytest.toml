@@ -1,0 +1,69 @@
+# Paste these tables into the project's pyproject.toml and adapt the marked spots.
+# (If the project uses pytest.ini / setup.cfg instead, translate accordingly.)
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# `src` layout: keep importable code under src/<package>/ and let pytest add it to sys.path.
+pythonpath = ["src"]
+
+# --- decision points: see SKILL.md "Decision points" ---
+# Async runner: auto mode means `async def test_*` runs without per-test decorators.
+asyncio_mode = "auto"
+
+addopts = [
+  "-ra",                       # show summary for skips/xfails/errors
+  "--strict-markers",          # an unregistered marker is an error (catches typos)
+  "--strict-config",           # an unknown ini key is an error
+  "--import-mode=importlib",   # modern import mode; no __init__.py needed in tests/
+
+  # Coverage — gate the FULL suite. Set <package> and the tier's floor (see SKILL.md table).
+  # Library 95 | async backend 90 | CLI 85 | telegram 80 | ML/DL 75.
+  "--cov=src",                 # or "--cov=<package>"
+  "--cov-branch",
+  "--cov-report=term-missing",
+  "--cov-fail-under=90",       # <-- set per project type
+
+  # Network isolation (requires pytest-socket). Loopback stays allowed so asyncio works.
+  # Integration tests opt back in with @pytest.mark.enable_socket.
+  "--disable-socket",
+  "--allow-hosts=127.0.0.1,::1",
+]
+
+# Registered markers (required by --strict-markers). The tier markers are applied automatically
+# by the conftest hook based on directory; you still register them here.
+markers = [
+  "unit: fast isolated test of one unit (auto-applied in tests/unit)",
+  "property: property-based / metamorphic / statistical test (auto-applied in tests/property)",
+  "integration: multiple real components across a boundary (auto-applied in tests/integration)",
+  "slow: deliberately slow; excluded from the inner loop (run with -m 'not slow')",
+  "gpu: requires CUDA; skipped when unavailable",
+  "enable_socket: integration tests that may use real (loopback/local) network",
+]
+
+# Warnings -> errors (decision point). ML stacks usually need a few targeted ignores; add them here.
+filterwarnings = [
+  "error",
+  # "ignore::DeprecationWarning:torch.*",
+  # "ignore::DeprecationWarning:numpy.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]              # or your package dir
+omit = [
+  "*/__main__.py",           # entry-point bootstrap is integration-level
+  "*/_version.py",
+  # "*/migrations/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "@(abc\\.)?abstractmethod",
+]

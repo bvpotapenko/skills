@@ -6,7 +6,7 @@ Two document types. Both are markdown files delivered to the user (not chat text
 
 **The box taxonomy** — visual anchors the learner learns to trust:
 
-- `💡 A-HA #N:` — a checkpoint that SEALS an insight the preceding text already fired; never the delivery vehicle. The box test: it must read as a one-line *summary of what the reader just felt*, not as news — if you cannot point at the exact preceding paragraphs that set the tension and released it, the box is unearned: build the ladder or cut the box. Because it's a seal, it doubles as self-diagnosis; instruct the learner in the preamble: "a 💡 box should feel obvious by the time you reach it — if one reads as new information, re-read the section above it before moving on." Each box earns its number by connecting at least two previously-separate things, or reframing one thing so a later result becomes obvious. Numbered consecutively, and numbering CONTINUES across documents in the same course (Part II starts where Part I stopped).
+- `💡 LINK #N:` — a checkpoint that SEALS a connection the preceding text already built; never the delivery vehicle. The box test: it must read as a one-line *summary of what the reader just understood*, not as news — if you cannot point at the exact preceding paragraphs that set the question and resolved it, the box is unearned: build the ladder or cut the box. Because it's a seal, it doubles as self-diagnosis; instruct the learner in the preamble: "a 💡 box should feel obvious by the time you reach it — if one reads as new information, re-read the section above it before moving on." Each box earns its number by connecting at least two previously-separate things, or reframing one thing so a later result becomes obvious. Numbered consecutively, and numbering CONTINUES across documents in the same course (Part II starts where Part I stopped).
 - `📓 NOTEBOOK:` — the load-bearing results as *generative prompts*: a question the learner answers in their own words, never a ready-made line to transcribe. Give the check, not the sentence — "📓 In your own words: why does squaring rescue the average deviation? (then check yourself against §2.1)". Quality bar: if the learner answered ONLY the notebook prompts, their answers would form a working summary of the document. Tell them to actually write, not nod.
 - `🎛 KNOBS:` — term-by-term dissection of a formula just presented: effect of each term growing/shrinking, behavior at edge cases, which knob the practitioner actually turns.
 
@@ -46,7 +46,7 @@ Two document types. Both are markdown files delivered to the user (not chat text
 # ANSWERS — all of them, at the very end
 ```
 
-Pacing rules that matter: escalate difficulty *within* each chapter and *across* the document; plant ideas early and pay them off with explicit callbacks ("Ch.0's Pythagorean a-ha, cashing in again"); when a chapter's concept will be someone's day-job tool, include one example set in the learner's actual domain. End the document with a short, warm sign-off in the teacher's voice that invites returning with solutions.
+Pacing rules that matter: escalate difficulty *within* each chapter and *across* the document; plant ideas early and pay them off with explicit callbacks ("Ch.0's Pythagorean link, cashing in again"); when a chapter's concept will be someone's day-job tool, include one example set in the learner's actual domain. End the document with a short, warm sign-off in the teacher's voice that invites returning with solutions.
 
 ## Format B — Workbook (exercise book)
 
@@ -71,7 +71,7 @@ Workbook craft:
 
 - **Standing equipment**: list the constants/rules the learner should know *from memory* (announce that using them unaided is deliberate spaced retrieval).
 - **Recurring cast** (Perelman's device): 2–4 characters who carry the playful tasks — a dragon with measurable heads, an absent-minded professor who loses umbrellas at fixed probability. Fun carries numbers; every playful task still has exact arithmetic and a real point.
-- **Tasks that secretly teach**: some ●●● tasks should lead the learner to *discover* a result the textbook never stated, which the answer then names ("you've just derived the computational formula for variance"). Discovery under one's own power is the strongest a-ha there is.
+- **Tasks that secretly teach**: some ●●● tasks should lead the learner to *discover* a result the textbook never stated, which the answer then names ("you've just derived the computational formula for variance"). Nothing cements understanding like discovery under one's own power.
 - **Self-verifying tasks**: where possible, design tasks whose answer the learner can check independently (invert the operation, compare two roads). These teach the checking habit for free.
 - **Mix of flavors**: pure-math drills, playful narratives, and the learner's real domains (work + research), roughly balanced; a domain task should be one they could genuinely meet on the job.
 - **Boss battles** end the ramp: multi-chapter, realistic, and at least one should contain a *trap* the textbook warned about (an approximation that fails in the tail, a selection bias, a tempting-but-wrong baseline) so the answer can spring it pedagogically.
@@ -79,4 +79,4 @@ Workbook craft:
 
 ## Multi-part continuity
 
-Chapter numbers, a-ha numbers, and task ID schemes continue across parts of the same course. Later parts open by restating where the previous part left the learner (its N core ideas) and close by extending the map. Cross-check numbers across parts on purpose (compute the same quantity by a new road and match it) — continuity is the physical evidence that this is one body of knowledge.
+Chapter numbers, link numbers, and task ID schemes continue across parts of the same course. Later parts open by restating where the previous part left the learner (its N core ideas) and close by extending the map. Cross-check numbers across parts on purpose (compute the same quantity by a new road and match it) — continuity is the physical evidence that this is one body of knowledge.

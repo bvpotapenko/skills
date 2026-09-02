@@ -440,7 +440,21 @@ runners/provenance.py  resolve_model_info, package_version, ModelProvenance buil
 runners/outputs.py     RawCapture, write_outputs
 ```
 
-Each module has one kind and one name that is the kind. The three planned additions each have an obvious home now (a request record → `cli.py`; a provenance builder → `provenance.py`) instead of landing on the pile. WPS201 in each runner rises from one `from kit import ...` to three or four `from` lines — that is the price, and it is the correct one; the call graph is unchanged, so rapier's hop count is unchanged.
+Each module has one kind and one name that is the kind. The three planned additions each have an obvious home now (a request record → `cli.py`; a provenance builder → `provenance.py`) instead of landing on the pile.
+
+### The shape: a package, not four loose files
+
+```
+runners/kit/__init__.py    re-exports the public names from the four modules below (WPS412 allows exactly this)
+runners/kit/cli.py
+runners/kit/runtime.py
+runners/kit/provenance.py
+runners/kit/outputs.py
+```
+
+Runners keep `import kit` / `from kit import ...`; their WPS201 counts do not move; a sibling repo that does `import kit` is untouched; `--cov=kit` and isort config are untouched. If instead the four files are dropped beside the runners and `kit.py` deleted, every runner's import count rises by three and lands at the WPS201 line with no headroom, and the sibling repo needs a lockstep migration — the "price" was never the split, it was doing the split without the package.
+
+Two things keep the package honest. First, one spelling: consumers import from `kit`, never from `kit.cli` — mixed spellings are the half-conversion failure mode, and "a façade preserves the old spelling" is a warning about *that*, not about the surface itself. Second, the kind column is re-run on the *package*: if `kit/` keeps gaining modules of new kinds, it is a dump with a directory.
 
 The docstring gets rewritten, not obeyed.
 
@@ -477,7 +491,7 @@ store/reader.py:14: WPS214 Found too many methods: 8 > 7
 
 The report *found* rung 0 and then chose rung 7 over it. Two errors in one paragraph:
 
-1. **A port you own is not an external contract.** Rung 7 Part 1 asks for a constraint kind; "the port dictates the set" only qualifies when the port is somebody else's. Here the port is in the same repo, and the port is exactly the thing the counter is questioning.
+1. **A port you own is not an external contract.** Rung 7 Part 1 asks for a constraint kind; "the port dictates the set" only qualifies when the port is somebody else's. Here the port is in the same repo, and the port is exactly the thing the counter is questioning. The same test applies to "pinned" functions: a sibling repo importing a runner's `_load_model` is not a reason to freeze `_load_model` and wrap it in `_load_session` — it is a reason to make the loader public and migrate the caller in the same change.
 2. **A stub with zero callers is rung 0**, and rapier's Tripwire 2 evidence against the interface, and Tripwire 6 ("might need it later"). A "planned-feature marker" is a comment in code form; version control is where plans that are not code live.
 
 ### The receipt, written honestly

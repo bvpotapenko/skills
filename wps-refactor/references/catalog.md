@@ -57,7 +57,7 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 **WPS210 — TooManyLocalVariables**
 - Measures: count of local names.
 - Cheat: reuse one variable for several purposes, or inline expressions to avoid naming them — both make the function harder to read while the counter drops.
-- Fix: group the locals. They almost always fall into 2–3 clusters that are each computed together and used together; each cluster is either a returned record type or a separate function whose return value is that cluster. Split at the point where a *value is complete*, not at a line number.
+- Fix: group the locals. They almost always fall into 2–3 clusters that are each computed together and used together; each cluster is either a returned record type or a separate function whose return value is that cluster. Split at the point where a *value is complete*, not at a line number. When the count is still over the line after extraction and the temptation is to write "the rest are load-bearing", run the locals audit (SKILL.md): several locals born from one call are one record; a local consumed by exactly one later call folds into that call. In tests, seven locals is a missing fixture or builder — the rule keeps its signal there.
 
 **WPS213 — TooManyExpressions** and **WPS231 / PLR0915 — CognitiveComplexity**
 - Measures: statement count and branch-nesting-weighted complexity.
@@ -130,7 +130,7 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 **WPS202 — TooManyModuleMembers**
 - Measures: top-level definitions in a module.
 - Cheat: move the overflow into `helpers.py` — splitting by *count*, so one concept ends up in two files and the import graph gets worse.
-- Fix: split by **concept**, not by size. Read the member names and group them: if the module contains "things that define the model families" and "things that run a scoring pass", those are two modules with a one-directional dependency. If every member genuinely belongs to one concept and the module is just large (a registry, a protocol definition), that is a legitimate suppression case — say so.
+- Fix: split by **concept**, not by size. Read the member names and group them: if the module contains "things that define the model families" and "things that run a scoring pass", those are two modules with a one-directional dependency. If every member genuinely belongs to one concept and the module is just large (a registry, a protocol definition), that is a legitimate suppression case — but "one concept" is proven with the kind column (SKILL.md, homogeneity test), not asserted. A docstring calling the module "the one shared module" or "flat by design" is not evidence; a member list with one kind in it is. If the members are growing while you refactor, the module is a dump.
 
 **WPS201 — TooManyImports** and **WPS235 — TooManyImportedModuleNames**
 - Measures: import count.
@@ -140,7 +140,7 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 **WPS214 — TooManyMethods**
 - Measures: method count on a class.
 - Cheat: move methods to module-level functions taking the instance as the first argument.
-- Fix: the class has more than one responsibility. Group methods by *which attributes they touch* — clusters that touch disjoint attribute sets are separate classes. If all methods touch all attributes, the class is cohesive and this is a suppression candidate.
+- Fix: the class has more than one responsibility. Group methods by *which attributes they touch* — clusters that touch disjoint attribute sets are separate classes. If all methods touch all attributes, the class is cohesive and this is a suppression candidate — after rung 0: a method that is a stub or has no caller comes out first (worked example 7), and a port the repo owns is not an external contract that fixes the method set.
 
 **WPS230 — TooManyPublicAttributes**
 - Fix: same clustering analysis as WPS214, applied to fields. Frequently a subset of fields is a nested value object (`ModelPaths`, `RunLimits`), which also fixes the WPS211 in the constructor.
@@ -211,8 +211,11 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 - Fix: rename the *inner* name to something more specific, or recognize that the function is reaching for module state it should receive as a parameter.
 
 **WPS421 — WrongFunctionCall** (`print`, `eval`, `exec`, `breakpoint`, `globals`)
-- Cheat: `getattr(builtins, "print")`, or wrapping `print` in a function named something else.
-- Fix: `print` → a `logging` call at the right level, or an explicit write to a stream the caller passes. `eval`/`exec` → a dispatch table (again). Debug leftovers → delete.
+- Measures: calls to builtins that bypass a boundary — `print` bypasses the output boundary, `eval`/`exec` bypass dispatch, `breakpoint` is a debugging leftover.
+- Cheat: `getattr(builtins, "print")`; a per-file-ignore because "these are CLI scripts"; a `show()` that forwards to `print` and controls nothing — that is a rename with a `noqa` on it.
+- Fix for `print`, N occurrences in one file = one missing **output boundary**. Sort the calls by what they emit, because the two kinds want different homes: **status and progress** ("deploying…", "done in 4s") go through `logging` — configure it once in `main()` with a stream handler, and `--verbose`/`--quiet` become a level, not a diff; **results and data** (the thing a caller would pipe) are written to a stream the function receives (`out: TextIO = sys.stdout`). Both leave zero suppressions. A wrapper is a real boundary, not a launder, when it owns the behavior the rule protects — stream, level, quiet — and the receipt proves it: adding `--quiet` or `--json` touches one place.
+- N+1 test that decides whether you built a boundary or renamed `print`: how many places change to send the output somewhere else?
+- `eval`/`exec` → a dispatch table (again). `breakpoint`/debug leftovers → delete.
 
 **WPS402 — TooManyNoqaComments**
 - If this fires, the previous pass cheated. Treat it as an audit finding: revisit the suppressed sites and fix them properly, or make the config decision explicitly.

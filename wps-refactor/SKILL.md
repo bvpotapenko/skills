@@ -1,6 +1,6 @@
 ---
 name: wps-refactor
-description: "Fix flake8 wemake-python-styleguide (WPS) and ruff violations by repairing the design the violation points at, instead of silencing the counter. Use this skill whenever a WPS or ruff violation is reported or pasted, whenever the user says 'make the linter pass', 'fix flake8', 'fix ruff', 'clean up lint', 'WPS is complaining', or reports that lint fixes made the code worse or harder to extend; and before editing any file in a repo whose setup.cfg or pyproject.toml enables wemake-python-styleguide. Use it especially the moment you are tempted to add a noqa, raise a max-* threshold, add a per-file-ignore, create utils.py or helpers.py, introduce **kwargs or Any, prefix a name with an underscore to dodge a rule, or split a function at an arbitrary line to get a count down — this skill governs every one of those moves. It takes precedence over rapier's tripwire against linter fixes that add structure."
+description: "Fix flake8 wemake-python-styleguide (WPS) and ruff violations by repairing the design the violation points at, instead of silencing the counter. Use whenever a WPS or ruff violation is reported or pasted, on 'make the linter pass', 'fix flake8/ruff', 'clean up lint', 'WPS is complaining', when lint fixes made code worse, and before editing any file in a repo whose setup.cfg or pyproject.toml enables wemake-python-styleguide. Use it the moment you are tempted to add a noqa, raise a max-* threshold, add a per-file-ignore, create utils.py/helpers.py, introduce **kwargs or Any, dodge a rule with an underscore, split a function at an arbitrary line, or call the config miscalibrated — and when writing or aggregating a lint-cleanup plan, listing 'options' for residual violations, or deciding how tests are linted: a suppression proposed in a plan is a suppression. Takes precedence over rapier's tripwire against linter fixes that add structure."
 ---
 
 # WPS-refactor — fix the design, not the counter
@@ -24,7 +24,7 @@ The reliable test is not "does it lint?" It is: **after the fix, how many places
 
 ### 1. Silencing — the counter is disabled rather than satisfied
 
-`# noqa: WPS226`, bumping `max-arguments`, adding a rule to `per-file-ignores`, renaming `data` to `data_`. The code is unchanged; only the observer changed. There is a legitimate version of this (see "When the linter is wrong") but it is rare and must be argued for out loud, never slipped in.
+`# noqa: WPS226`, bumping `max-arguments`, adding a rule to `per-file-ignores`, renaming `data` to `data_`. The code is unchanged; only the observer changed. There is a legitimate version of this (see "Rung 7") but it is rare, it carries a receipt, and it is argued for out loud, never slipped in.
 
 ### 2. Displacement — the complexity moves to where nothing counts it
 
@@ -71,9 +71,11 @@ Two vocabularies for one concept, plus a silent fallback that hides unknown mode
 
 Do not philosophize about import order. Classify the violation first — this takes seconds and prevents the opposite failure, where every trivial fix turns into a redesign.
 
-**Mechanical fix is correct and sufficient** — apply it and move on: ruff `I` (import sorting), `UP` (pyupgrade), `E`/`W` (whitespace, formatting), `C4` (comprehensions), `F401` (unused import → delete it), `RET504`/`RET505` (redundant assignment or `else` after `return`), WPS336 (implicit string concat), WPS339/WPS358 (number formatting), WPS420 (`pass` → docstring or removal), WPS504 (negated condition → invert it).
+**Mechanical fix is correct and sufficient** — apply it and move on: ruff `I` (import sorting), `UP` (pyupgrade), `E`/`W` (whitespace, formatting), `C4` (comprehensions), `F401` (unused import → delete it), `RET504`/`RET505` (redundant assignment or `else` after `return`), WPS336 (implicit string concat), WPS339/WPS358 (number formatting), WPS420 (`pass` → docstring or removal), WPS504 (negated condition → invert it), WPS453 / ruff `EXE001`/`EXE002` (shebang and executable bit disagree → `chmod +x`, or drop the shebang if the file is only imported; a fact about the file's mode is not something to ignore in config).
 
-**Structural — the violation is a symptom; read the rest of this skill**: every WPS rule that counts things (WPS2xx family), every naming rule (WPS110/111/118), WPS226, WPS432, WPS437, WPS219, WPS430, and ruff `ARG`, `PLR09xx`, `B006`/`B008`.
+**Structural — the violation is a symptom; read the rest of this skill**: every WPS rule that counts things (WPS2xx family), every naming rule (WPS110/111/118), WPS226, WPS432, WPS437, WPS219, WPS430, WPS421, and ruff `ARG`, `PLR09xx`, `B006`/`B008`.
+
+**A rule that fires N times on one file is one structural finding, not N.** Fourteen `print` calls in a script are one missing output boundary (catalog, WPS421). Six `WPS111` short names in one loop body are one unnamed thing being indexed. Group by concept before you count anything — the count decides whether the linter is wrong, and counting lines instead of concepts is how a single fix gets mistaken for a miscalibrated config.
 
 **Ambiguous — decide by reading the code**: WPS110 on a genuinely generic utility, WPS111 on a mathematical index in a tight loop, SIM102/SIM108 where the "simplified" form is less readable than the original. If mechanical is genuinely better here, take it and say why in one line.
 
@@ -111,7 +113,15 @@ Write it down explicitly, in domain language, before touching code. The sentence
 - Bad: "This function is too complex." (that is the linter's sentence, not yours)
 - Bad: "We need a strategy pattern." (a shape, chosen before the concept was named)
 
-If you cannot write this sentence, you have not read enough. Go back to step 2. If the honest sentence is "there is no missing concept, this function is just long and linear," that is a valid finding — see "When the linter is wrong."
+If you cannot write this sentence, you have not read enough. Go back to step 2.
+
+**The seam test — run it before you may write "no missing concept, this function is just long and linear."** That sentence is a claim about the code, and it is checkable, so check it. List, in execution order, the complete values the function produces — each as a noun phrase that makes sense without mentioning the caller: `the parsed run request`, `the running container`, `the gathered results directory`, `the eval report`. Intermediates that only mean something mid-computation (`the partially reduced accumulator`, `the loop index`) do not count.
+
+- **Two or more nouns → seams exist.** Each noun is a function that returns it; the locals every phase reads are one frozen record (rung 4). Go to step 4. This is the normal case for any orchestration `main()` — deploy, gather, evaluate, report — because the script already names its phases. A flat-scripts preference (no layers, no classes) is satisfied by four top-level functions and one record; it is not a requirement that one function hold every local.
+- **Fewer than two → the finding is earned.** Go to "Rung 7" with the list as your evidence.
+- **Two or more, extracted, and still over the line → run the locals audit** (next section) before writing "the rest are load-bearing".
+
+"These are CLI scripts" and "it is a 160-line orchestration function" describe the file. They are not seam-test results, and they do not open the escape valve.
 
 ### 4. Choose the home from the shape menu
 
@@ -169,12 +179,15 @@ Home:            <file:symbol>
 Shape:           <rung number + name from the menu>
 Sweep:           grep '<old spelling>' -> <N> hits outside home   (must be 0)
 N+1 receipt:     adding <concrete new case> touches <M> place(s): <list>
-Suppressions:    none | <rule> — <one-line reason>
-Thresholds:      unchanged
+Suppressions:    none | <rule> at <scope> — <one-line reason>   (one entry per concept, not per line; each has a Rung-7 receipt below the report)
+Config:          untouched
+Config notes:    none | <observation for the owner, e.g. "per-file-ignore for tests/*.py matches no file">
 Behavior:        unchanged | <what changed and why it was required>
 ```
 
-The `Thresholds: unchanged` line exists because raising a `max-*` value is the least visible and most damaging form of silencing — it weakens the rule for the entire codebase to fix one function. If you changed one, say so explicitly and justify it as a config decision, not as a fix.
+`Config: untouched` is a constant, not a status. `setup.cfg` and `pyproject.toml` are not edited by this skill and are not offered as a path: a threshold or ignore changed there weakens the rule for files you have not read, and it is the one silencing move that leaves no trace at the site it excuses. `Config notes:` is where a real observation goes — a stale ignore copied from another project, a third module in the repo needing the same suppression — stated once, for the owner to act on. It is a line in the report, not a branch the user must choose before the task can finish.
+
+The report is the deliverable whether the request was "check" or "fix"; the only difference is whether the `Violations:` line has an `after`. For a check, every structural finding still carries its step-3 sentence, and the one next step to offer is applying it.
 
 ---
 
@@ -183,8 +196,8 @@ The `Thresholds: unchanged` line exists because raising a `max-*` value is the l
 Run this against your own diff before reporting. Each item is grep-able. Any hit needs a written justification or a redo.
 
 1. `# noqa` added anywhere
-2. A `max-*` value raised in `setup.cfg`
-3. A rule added to `per-file-ignores`
+2. A `max-*` value raised in `setup.cfg` / `pyproject.toml` — redo; there is no justification path (see "Rung 7")
+3. A rule added to `per-file-ignores` — redo; same
 4. New file named `utils.py`, `helpers.py`, `common.py`, `misc.py`, `base.py`, `core.py` (WPS100/WPS102 exist precisely to catch this)
 5. New function named `_part2`, `_step_b`, `_process_impl`, `_do_work`, `_handle` — split-by-line-count signatures
 6. A name gained a trailing underscore or a numeric suffix (`data_`, `value2`)
@@ -197,20 +210,130 @@ Run this against your own diff before reporting. Each item is grep-able. Any hit
 13. The raw literal an enum replaced still appears elsewhere in the repo
 14. A new `if` chain was created that duplicates a branch that already exists elsewhere
 15. Behavior changed silently — a `try` body was narrowed, a default branch was added, an exception type widened
+16. More `# noqa` entries for one rule in one file than the number of step-3 sentences written for that rule (suppressions scattered per line instead of placed once per concept)
+17. A suppression reason built on "by design", "flat", "cohesive", "load-bearing", "one over", "documented", or an effort estimate, with no constraint kind from Rung 7 Part 1
+18. A structural option marked "rejected" in a report or plan with no drafted shape next to it (no field list, no kind column, no locals table)
+19. A `NotImplementedError`, `pass`-body, or zero-caller method still present in a class that received a WPS214 suppression
+20. A helper returning a tuple of three or more values that was not given a name (the record rung 4 was for)
+21. A config change, threshold value, or per-file-ignore appearing as an *option* or *recommendation* in a plan — it belongs on `Config notes:` as an observation with a named domain property, or nowhere
 
-Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking.
+Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder.
 
 ---
 
-## When the linter is wrong
+## The residual after extraction — the locals audit
 
-Sometimes it is. A registry module that is genuinely a flat list of facts will trip WPS202 (too many module members), and splitting it makes things worse. A numerical kernel will trip WPS210 and WPS221 for real mathematical reasons. **A zero-exception policy is not a virtue here — it is what causes linter-driven architecture damage**, because it leaves an agent no honest exit and forces the bad refactor.
+The seam test gets `main()` from 14 locals to 7. Then the second failure arrives: "every remaining local is a load-bearing phase handoff; bundling further would be a god-object." That sentence is also a claim, and it is also checkable. For each surviving local write **where it is born** and **who consumes it**:
 
-The escape valve must be narrow and expensive:
+```
+local        born at                consumed by
+args         parse_args()           _load(), _run(), Path(args.out)
+device       init_device()          _load(), _provenance(), _run()
+adapter  ┐
+patches  ├   _load_adapter()        _run() / _provenance() / _provenance()
+loaded   ┘
+model_info   resolve_model_info()   _provenance()
+provenance   _provenance()          write_outputs()
+captures     _run()                 write_outputs(), log
+out_dir      Path(args.out)         write_outputs(), log
+```
 
-1. Suppress the **narrowest scope that works**: a line-level `# noqa: WPS226 — <reason>` beats a file-level ignore, which beats a config change.
-2. Every suppression carries a one-line reason naming the forcing constraint — the same standard as a KEEP line in a rapier deletion pass. "Too hard to fix" is not a reason. "This module is a flat registry; splitting it would spread one concept across files" is.
-3. If suppressions for the same rule reach three, stop and tell the user: **the config is miscalibrated for this project**, and fixing it at config level (with a stated rationale) is more honest than scattering suppressions. That is a conversation to have, not a change to make unilaterally.
+Two rules read straight off the table:
+
+- **Several locals born from one call are one value.** A helper that returns a 3-tuple has a return type it did not name. Name it (a frozen record) and three locals become one. This is a *type*, not a god-object: the fields were produced together at one seam and describe one state — "the model is ready".
+- **A local consumed by exactly one later call folds into that call.** `model_info` feeds only `_provenance` → compute it inside `_provenance`. `provenance` feeds only `write_outputs` → pass the call directly, or let the writer build it. `out_dir` used once → inline it.
+
+What survives is the honest count, and in a linear runner it is 3–4: the parsed request, one prepared-state record, the result. Only if it is *still* over the line after the audit is the function doing more than one job — and the seams are the rows where the consumer set changes.
+
+The discriminator the displacement table relies on, stated so it can be applied: **a record is a value when its fields are born at the same seam and consumed together; it is a bag when it collects whatever happened to be in scope.** `config: dict`, a `ctx` every function reads two keys from, `**kwargs` — bags. `LoadedSession(device, adapter, loaded, patches)` returned by the one function that produces all four — a value. "Would be a god-object" is not an objection to a drafted record with its fields listed; it is an objection to an undrafted one.
+
+A companion signal in the same table: if `args` (an untyped namespace) appears in every consumer column and helpers read four or five fields off it, the request itself is an unnamed record. Parsing argv into a typed request at the boundary is the WPS226 "parse at the boundary" move applied to the CLI; decide it once for the package, not per runner.
+
+---
+
+## Module and class counters — the homogeneity test
+
+WPS202 (module members) and WPS214 (methods) get the same assertion: "it is one concept", "flat by design", "the docstring says this is the single shared module". Test it instead of accepting it. List the members and write the *kind* of each next to it:
+
+```
+add_common_args      CLI parser builder
+init_device          platform probe
+seed_everything      RNG setup
+resolve_model_info   provenance lookup
+package_version      provenance lookup
+write_outputs        result writer
+RawCapture           result record
+MODE_SCORE_*         CLI vocabulary
+```
+
+Four or five kinds in one module is four or five concepts sharing a filename. Split by *kind*: each new module is named after its kind (`provenance.py`, `outputs.py`, `cli.py`), depends one way on the others, and receives no member because of its size. This is the opposite of `helpers.py`, which is a split by count; anti-cheat item 4 stays in force.
+
+A module passes the test — and earns a suppression — when every member is *the same kind of thing* and reading it top to bottom is reading one list: one spec type plus N instances; N probe functions and the table that registers them; a contract module of zero-logic types. Then the flat shape is the concept, not a habit.
+
+Two things the counter cannot tell you but the member list can:
+
+- **Growth under refactor is the tell.** If the design work you are doing *adds* members to a module already over the line, that module is absorbing concepts rather than owning one. A registry gains entries; a dump gains kinds.
+- **Splitting by kind adds import statements, not hops.** Rapier's "flatten if tracing one path crosses more than ~3 files" is about *call chains*. A runner importing from three concept modules instead of one shared module makes the same calls at the same depth; WPS201 rises by two and that is the right price. Do not defend a dump with WPS201.
+
+For WPS214 the kind column is *which attributes the method reads* (catalog entry). And for both counters, a Protocol or port that dictates the member set is an external contract only if it is external: a port you own whose method is a stub with zero callers is rung 0 evidence against the port, not a reason to suppress the class that implements it.
+
+---
+
+## Tests
+
+Agents disagree about tests because the rules that carry design signal in production code split into two groups there, and the split has to be stated.
+
+**Rules that lose most of their signal in tests — relaxed once, repo-wide, for `tests/**`, with a two-line rationale, by the owner:** WPS202 and WPS201 (a test module is legitimately a flat list of scenarios with many imports), WPS226 and WPS432 (test data is literals; naming every one hides the scenario), WPS118 (test names are sentences), WPS437 and WPS442 (tests reach into internals and shadow fixtures by design). Relaxing these per file, or differently in sibling packages, is the miscalibration; relaxing them once for the test tree is a policy, and this skill's job is to name the policy on the `Config notes:` line, not to edit it in.
+
+**Rules that keep their signal in tests — treated exactly as in production:** WPS210, WPS213, WPS231, WPS220, WPS222, WPS204. A test with seven locals has an arrange block that wants a fixture or a builder; a nested loop over cases wants `parametrize`; an idiom repeated twelve times across a module wants one helper with a domain name. These are the same missing concepts this skill hunts everywhere, and they matter *more* in tests, because the suite is the document a maintainer reads first. Fix them structurally and report them with the same receipt as production code.
+
+---
+
+## Rung 7 — suppression, and what it costs
+
+Sometimes the linter is wrong. A registry that is genuinely a flat list of same-kind facts will trip WPS202, and splitting it makes things worse. A numerical kernel will trip WPS210 and WPS221 for real mathematical reasons. A zero-exception policy would force the bad refactor, so an honest exit must exist.
+
+But the exit is where this skill fails most often, and it fails one way: **the agent reaches it by assertion.** "The class is cohesive", "flat by design", "every local is load-bearing", "it is only one over", "the docstring calls it the one shared module", "the structural option is half a day" — each sounds like a finding and none is checkable. An exit reachable with a sentence will be reached with a sentence. So the exit is a rung with a receipt, and the receipt has three parts a reader can verify.
+
+### Part 1 — the forcing constraint is one of three falsifiable kinds
+
+| Kind | Qualifies | Verify by |
+|---|---|---|
+| **External contract** | The file is copied into a container as a single artifact; a third-party API fixes the method set; a wire format fixes the field names | Point at the deployment line, the upstream signature, the spec |
+| **Homogeneous table** | One record type plus N instances; N same-kind functions in one registry; a contract module of zero-logic types | The kind column above has one entry |
+| **Mathematical necessity** | A kernel whose intermediates have no domain names because they are steps of one derivation | Try to name the two halves; if you cannot, the seam does not exist |
+
+What never qualifies: a docstring or a past decision ("flat by design", "the only shared module") — these record a *location* and a *history*, and rapier's encounter check already says age is not a forcing requirement; a comment is age written down. Cohesion asserted without the kind column. "Load-bearing" asserted without the locals audit. The size of the overage — a threshold is where the signal starts, not a tolerance band, and "one over" in a module you expect to grow is "three over" next quarter. The cost of the alternative — cost is reported to the user, never used to decide.
+
+### Part 2 — every lower rung has a written verdict
+
+You may not reject a shape you have not drafted. "Deeper bundling — rejected: displacement" is a claim; the evidence is the drafted record with its fields listed and the born-at column showing they come from different seams. Write this next to every suppression in the report:
+
+```
+Suppression receipt — <file:symbol>, <rule>
+Constraint kind:  external contract | homogeneous table | mathematical necessity
+Constraint:       <the checkable fact, with its location>
+Rung 0 delete:    nothing — all N members have live callers: <list> | <what was deleted>
+Rung 1–2:         n/a because <...> | tried: <...>
+Rung 3–4:         drafted <Table/Record>(fields=[...]); rejected because <born at different seams / consumed by different callers>
+Rung 5–6:         n/a — variants differ in one behavior | drafted: <...>
+Scope:            line | module        (narrowest that works)
+```
+
+A rung line reading "not tried" makes the receipt incomplete and the suppression unearned. Rung 0 in particular: a stub, a `NotImplementedError`, a hook with zero callers, a "planned feature" marker inside a class that trips WPS214 — these are rung 0, and deleting one (version control remembers) or implementing it usually drops the count below the line by itself. Choosing a suppression while a stub is still in the class is the clearest failure this skill produces.
+
+### Part 3 — scope, and what counting suppressions means
+
+The ladder of scope stops at the module:
+
+1. **Line-level** `# noqa: WPS226 — <reason>` for a single site.
+2. **Module-level**, in the module docstring (`flake8: noqa: WPS202 — <reason>`), when the whole file is one homogeneous concept. One home, one reason, visible in the file it governs. Also the right scope when one rule fires many times on one concept in one file: one suppression, not fourteen.
+3. There is no rung 3. Config is not a fix and is not offered as one. A change that belongs in config is a decision about the project, made by its owner outside this task; if the code in front of you seems to need it, that is a `Config notes:` observation.
+
+When the same rule earns a *receipted* suppression in a third module of the repo, that pattern goes on `Config notes:` as an observation — "three registries in this package trip WPS202; if the package is declarative by nature the owner may want a package-level value" — never as a recommendation. Two things are routinely misread here:
+
+- **Only receipted suppressions count.** Five proposed `noqa`s with no Part-2 receipts are five unfinished refactors, not five strikes. Counting your own untried suppressions and concluding the threshold is wrong is circular.
+- **A threshold is calibrated to a property of the domain**, never to how many times a refactor felt hard. The observation names the property ("numerical kernels", "declarative registries", "test scenario lists"); if you cannot name one, there is no observation, only unfinished work.
 
 ---
 
@@ -222,12 +345,15 @@ Rapier's Tripwire 7 says: *a linter fix that adds structure → stop and ask*. T
 2. **Once code has earned its place, this skill governs its shape.** Rapier's "don't add abstraction" instinct does *not* veto naming a concept that a violation exposed, because rungs 3–5 (table, dataclass, enum) reduce total complexity — they make the N+1 edit smaller. Rapier's ladder measures *layers*; this skill measures *places you must edit*. When a change lowers the second while raising the first slightly, take it.
 3. **Rapier still vetoes speculation.** WPS223 firing on a three-branch chain is a reason for a three-entry table, not for a plugin system, an entry-point registry, or a config schema. Rapier's Tripwire 2 (an abstraction with exactly one user) and Tripwire 6 (building for an unstated requirement) remain in force. If the shape you chose has one member, it is a rename, not a concept.
 4. **Tool choice still precedes style conformance.** If the right answer was a 20-line shell script, do not build a Python class hierarchy because the Python linter is the one that ran.
+5. **Rapier's flatness is about hops, not files.** Its ladder and its "flatten past ~3 files" question measure how far a reader travels to follow one execution path. Splitting a shared module into concept modules changes where names are imported from, not how many calls deep a path goes; it is not a ladder climb and rapier does not veto it. What rapier does veto is the *class* that a split might tempt you into when three functions would do.
+6. **"Documented" is not a forcing requirement in either skill.** Rapier's encounter check strips existing structure of the authority of a past decision; this skill strips existing *flatness* of the same authority. A docstring saying "the one shared module" or "flat by design" is a statement of history that both skills read and neither obeys. The forcing requirement has to be nameable today, in one sentence, of one of the three kinds in Rung 7.
+7. **Stubs are rapier's evidence and this skill's rung 0.** A method that raises `NotImplementedError` or has no caller is Tripwire 2 evidence against its interface for rapier and a deletion for this skill. Neither skill lets it hide under a `noqa`.
 
 ---
 
 ## Reference files
 
 - `references/catalog.md` — 40+ WPS and ruff rules with the typical cheat and the structural fix for each. **Read this whenever a violation code appears that you have not just handled.** Look up the specific code rather than reasoning from the rule name; several WPS names are misleading about what they are actually measuring.
-- `references/worked-examples.md` — three full before/after refactors at different rungs, including the parallel-dispatch-tables case and a complexity-splitting case. Read when the shape choice in step 4 is not obvious.
+- `references/worked-examples.md` — seven before/after cases at different rungs: parallel dispatch tables, a complexity split, deletion before abstraction, the one honest suppression, an orchestration `main()` through the seam test *and* the locals audit, a "flat by design" shared module through the homogeneity test, and a WPS214 class whose real fix was rung 0. Read example 5 before deciding a `main()` cannot be decomposed; read 6 before writing "one concept, flat by design"; read 7 before suppressing on a class that has a stub in it.
 
 **These examples are directional, not templates.** They show what "the concept got a home" looks like in one domain. Adapt the reasoning — the sentence in step 3 and the receipt in step 6 — to the code in front of you. An example copied structurally into a project where it does not fit is itself a WPS-refactor failure: it is displacement with extra steps.

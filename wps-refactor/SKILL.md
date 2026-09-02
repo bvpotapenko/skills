@@ -20,7 +20,7 @@ The reliable test is not "does it lint?" It is: **after the fix, how many places
 
 ---
 
-## The three failure modes — recognize these in your own edits
+## The four failure modes — recognize these in your own edits
 
 ### 1. Silencing — the counter is disabled rather than satisfied
 
@@ -66,6 +66,14 @@ def _resolve_family(engine_name: str, model_type: str) -> Family:
 Two vocabularies for one concept, plus a silent fallback that hides unknown models. **The rule: a concept is not introduced until the old spelling has zero occurrences outside its new home.** Step 5 of the procedure enforces this mechanically.
 
 ---
+
+### 4. Respelling — the logic is unchanged, only the AST is
+
+A tuple of two outcomes indexed by `bool(choices)` so that no ternary appears. `''.join(choices[:1])` to spell "the first element or empty". `sys.stdout.write(...)` in place of a banned `print`. An `and`/`or` chain that reproduces an `if`. A ternary moved into a call argument "to see whether WPS509 still fires". Every one of these keeps the same operands and the same branches and changes only the syntax the rule's visitor looks for. The counter goes green, the reader now has to decode an idiom, and the reason the rule exists is untouched. This is the failure mode that is *harder* to catch than a `noqa`, because a `noqa` is visible in the diff and a `tuple[bool(x)]` is not — so it gets its own test.
+
+**The reason test, run before every edit.** Each rule protects one design property; the catalog names it, and for a rule the catalog does not cover, the WPS docstring does (`python -c "from wemake_python_styleguide.violations import *; help(...)"` or the docs). Write the reason in one clause, then ask of the change you are about to make: *does it satisfy the reason, or the mechanism?* "WPS421 forbids `print` because output belongs to one declared channel" → routing through `sys.stdout.write` satisfies nothing; routing through a logger, or declaring this module *is* the output channel (a role policy, below), satisfies the reason. "WPS509 forbids nested ternaries because a reader cannot hold two conditions in one expression" → naming the intermediate value satisfies it; a tuple index does not. If the honest answer is "mechanism", stop; the change is a respelling.
+
+Two corollaries. **Never edit to find out whether a rule fires** — "let the linter tell me" is legitimate for confirming a structural fix landed, not for searching the space of syntaxes a visitor misses. **Shaving a local is not a fix** — "drop `bound` by changing how the loop unpacks", "fold `plan_path` into the `Path(...)` call" are respellings of WPS210; the locals audit (below) is the fix, and if it leaves the count over the line the function is doing two jobs.
 
 ## Not every rule needs architecture
 
@@ -216,8 +224,11 @@ Run this against your own diff before reporting. Each item is grep-able. Any hit
 19. A `NotImplementedError`, `pass`-body, or zero-caller method still present in a class that received a WPS214 suppression
 20. A helper returning a tuple of three or more values that was not given a name (the record rung 4 was for)
 21. A config change, threshold value, or per-file-ignore appearing as an *option* or *recommendation* in a plan — it belongs on `Config notes:` as an observation with a named domain property, or nowhere
+22. An expression restructured with the same operands and branches to change its AST shape — `tuple[bool(...)]`, `and`/`or` chains standing in for `if`, `''.join(x[:1])`, a ternary relocated into an argument — with the rule's reason unaddressed
+23. `sys.stdout.write` / `sys.stderr.write` / `os.write` appearing where `print` was flagged
+24. An edit whose purpose, stated or evident, was to find out whether a rule fires
 
-Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder.
+Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder. Items 22–24 are invisible in a diff review; they are caught only by running the reason test on your own change before you make it.
 
 ---
 
@@ -280,9 +291,11 @@ For WPS214 the kind column is *which attributes the method reads* (catalog entry
 
 ---
 
-## Tests
+## Role policies — tests, CLI modules, scripts
 
-Agents disagree about tests because the rules that carry design signal in production code split into two groups there, and the split has to be stated.
+Some files have a *job* that is the very thing a style rule forbids. A test asserts and uses literal data; a CLI entry module prints; a standalone script has a shebang and a `main` that talks to the user. For such a file the rule's reason is satisfied by the file's role, and the honest form is a **role policy**: a per-file-ignore keyed to the role (`tests/**`, `**/cli.py`, `scripts/*.py`), decided once by the owner, with a two-line rationale in the config. It is a policy, not a suppression, and it is not this skill's to write — the agent names it on `Config notes:` and, until it exists, fixes the code in front of it the honest way (a logger, or one declared output function that the module calls, never `sys.stdout.write` in place of `print`). Three things keep role policies from becoming the miscalibration they replace: the role is a *file kind*, not a file that happened to be hard; the relaxed rules are the ones whose reason the role satisfies, nothing more; and the same policy is spelled identically across sibling packages.
+
+Tests are the role where this matters most, because the rules that carry design signal split into two groups there and agents disagree unless the split is stated.
 
 **Rules that lose most of their signal in tests — relaxed once, repo-wide, for `tests/**`, with a two-line rationale, by the owner:** WPS202 and WPS201 (a test module is legitimately a flat list of scenarios with many imports), WPS226 and WPS432 (test data is literals; naming every one hides the scenario), WPS118 (test names are sentences), WPS437 and WPS442 (tests reach into internals and shadow fixtures by design). Relaxing these per file, or differently in sibling packages, is the miscalibration; relaxing them once for the test tree is a policy, and this skill's job is to name the policy on the `Config notes:` line, not to edit it in.
 
@@ -354,7 +367,7 @@ Rapier's Tripwire 7 says: *a linter fix that adds structure → stop and ask*. T
 
 ## Reference files
 
-- `references/catalog.md` — 40+ WPS and ruff rules with the typical cheat and the structural fix for each. **Read this whenever a violation code appears that you have not just handled.** Look up the specific code rather than reasoning from the rule name; several WPS names are misleading about what they are actually measuring.
+- `references/catalog.md` (section I covers the style rules whose fixes are most often respelled) — 40+ WPS and ruff rules with the typical cheat and the structural fix for each. **Read this whenever a violation code appears that you have not just handled.** Look up the specific code rather than reasoning from the rule name; several WPS names are misleading about what they are actually measuring.
 - `references/worked-examples.md` — seven before/after cases at different rungs: parallel dispatch tables, a complexity split, deletion before abstraction, the one honest suppression, an orchestration `main()` through the seam test *and* the locals audit, a "flat by design" shared module through the homogeneity test, and a WPS214 class whose real fix was rung 0. Read example 5 before deciding a `main()` cannot be decomposed; read 6 before writing "one concept, flat by design"; read 7 before suppressing on a class that has a stub in it.
 
 **These examples are directional, not templates.** They show what "the concept got a home" looks like in one domain. Adapt the reasoning — the sentence in step 3 and the receipt in step 6 — to the code in front of you. An example copied structurally into a project where it does not fit is itself a WPS-refactor failure: it is displacement with extra steps.

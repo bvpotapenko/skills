@@ -259,3 +259,37 @@ Apply and move on. Spending design thought here is the opposite failure — it w
 `I001` import sorting · `UP` pyupgrade rewrites · `E`/`W` whitespace and formatting · `C4xx` comprehension simplification · `F401` unused import (delete it) · `RET504` redundant assignment before return · `RET505` `else` after `return` · `WPS336` implicit string concatenation · `WPS339`/`WPS358` number literal formatting · `WPS420` stray `pass` · `WPS503` useless returning `else` · `WPS504` negated condition (invert it) · `WPS507` useless `len()` compare · `WPS510` `in` against a list (use a set or tuple) · `WPS513` implicit `elif` · `WPS529` `if k in d: d[k]` (use `d.get`) · `PTH` pathlib migrations.
 
 The one caution: apply these *after* the structural work, not before. Mechanical fixes on code you are about to restructure are wasted diff and make the real change harder to review.
+
+## I. Style rules — the reason, and the respelling to recognize
+
+These are the rules most often "fixed" by changing syntax while leaving the logic identical. For each: what the rule protects, what an honest fix looks like, and the respelling that satisfies the visitor and nothing else. Run the reason test (SKILL.md, failure mode 4) before touching any of them.
+
+**WPS421 — forbidden built-in call (`print`, `input`, `breakpoint`, ...).**
+Reason: a module's output belongs to one declared channel; scattered `print` calls are output with no owner. Fix: a logger for diagnostics; for user-facing text, one function in the CLI module (`say(text)`, `render_error(err)`) that every caller uses — and if the module *is* the CLI, that is a role policy for the owner to declare, not a suppression to add. Respelling: `sys.stdout.write`, `sys.stderr.write`, `os.write`, `click.echo` imported for this line only — same undeclared output, different spelling.
+
+**WPS509 — nested ternary; WPS337 — multiline condition.**
+Reason: a reader cannot hold two conditions inside one expression. Fix: name the intermediate (`fallback = ...; value = x if cond else fallback`), or when the ternary selects among ≥3 values, a mapping keyed by the discriminant. Respelling: a two-tuple indexed by `bool(cond)`, `cond and a or b`, `(a, b)[cond]`, moving the ternary into a call argument or a comprehension where the visitor does not look.
+
+**WPS504 — negated condition with `else`.**
+Reason: `if not x: A else: B` reads backwards. Fix: swap the branches. Respelling: `if x is False`, `if x == False`, wrapping the condition in a helper named `_not_x`.
+
+**WPS425 — boolean positional argument.**
+Reason: `f(data, True)` hides what the flag means at the call site. Fix: keyword-only (`def f(data, *, strict: bool)`) and call with `strict=True`; two callers always passing opposite values is two functions. Respelling: `f(data, STRICT)` where `STRICT = True`; `f(data, int(flag))`.
+
+**WPS430 — nested function.**
+Reason: a closure over locals is a function whose inputs are invisible. Fix: hoist to module level with the captured names as parameters; if it captured five locals, those five are a record (rung 4). Respelling: `lambda` assigned to a name; `functools.partial` over a module function created solely to keep the closure's signature.
+
+**WPS433 — nested import.**
+Reason: imports at function level hide a dependency and are usually there to dodge an import cycle or WPS201. Fix: the dependency at the top; a cycle means one of the two modules is two concepts. Legitimate exception, stated on the line: a heavy or optional import (torch, transformers) that must not run at module import time — that is a forcing constraint and a `# noqa: WPS433 — <why>` with a receipt. Respelling: `importlib.import_module("x")` at function level.
+
+**WPS440 / WPS442 — block-local overlap / outer-scope shadowing.**
+Reason: one name, two meanings in one reader's view. Fix: the two things get their two names, and if the inner one is "the same thing, narrowed", the outer scope was holding a value it did not need. Respelling: trailing underscore, numeric suffix, single-letter rename.
+
+**WPS220 — too deep nesting; WPS223 — too many `elif`.**
+Reason: control flow is encoding a table or a missing early return. Fix: guard clauses first; then a table keyed by the discriminant (rung 3); a loop body with two nested `if`s is usually one predicate function (`_is_eligible(entry)`) and one action. Respelling: the same branches as a chain of `and`/`or`; `match` with the same arms; the nested block moved into a one-caller helper named after its position (`_inner`, `_body`).
+
+**WPS210 / WPS211 by shaving.**
+Reason: the count measures how many things a reader must hold. Fix: the locals audit (SKILL.md). Respelling: folding a named value into a longer expression (which then trips WPS221), unpacking differently so a name disappears, passing a tuple where two arguments were, reusing one variable for two meanings.
+
+**WPS515 — `open()` without a context manager; WPS529 — implicit `.get`.**
+Mechanical, section H — listed here only because agents sometimes "fix" WPS515 by wrapping `open` in a helper that also lacks the context manager.

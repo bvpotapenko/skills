@@ -205,7 +205,8 @@ Run this against your own diff before reporting. Each item is grep-able. Any hit
 
 1. `# noqa` added anywhere
 2. A `max-*` value raised in `setup.cfg` / `pyproject.toml` — redo; there is no justification path (see "Rung 7")
-3. A rule added to `per-file-ignores` — redo; same
+3. A rule added to `per-file-ignores` under a glob or for more than one rule per file — redo; a single-file, single-rule entry with a receipt is rung 7 scope 2, anything wider is a role policy or a threshold
+3a. `# flake8: noqa` anywhere in a file, with or without codes — it blankets the whole file; redo as a `per-file-ignores` entry
 4. New file named `utils.py`, `helpers.py`, `common.py`, `misc.py`, `base.py`, `core.py` (WPS100/WPS102 exist precisely to catch this)
 5. New function named `_part2`, `_step_b`, `_process_impl`, `_do_work`, `_handle` — split-by-line-count signatures
 6. A name gained a trailing underscore or a numeric suffix (`data_`, `value2`)
@@ -331,7 +332,7 @@ Rung 0 delete:    nothing — all N members have live callers: <list> | <what wa
 Rung 1–2:         n/a because <...> | tried: <...>
 Rung 3–4:         drafted <Table/Record>(fields=[...]); rejected because <born at different seams / consumed by different callers>
 Rung 5–6:         n/a — variants differ in one behavior | drafted: <...>
-Scope:            line | module        (narrowest that works)
+Scope:            line (noqa) | module (per-file-ignores: <path>: <rule>)   (narrowest that works)
 ```
 
 A rung line reading "not tried" makes the receipt incomplete and the suppression unearned. Rung 0 in particular: a stub, a `NotImplementedError`, a hook with zero callers, a "planned feature" marker inside a class that trips WPS214 — these are rung 0, and deleting one (version control remembers) or implementing it usually drops the count below the line by itself. Choosing a suppression while a stub is still in the class is the clearest failure this skill produces.
@@ -341,8 +342,14 @@ A rung line reading "not tried" makes the receipt incomplete and the suppression
 The ladder of scope stops at the module:
 
 1. **Line-level** `# noqa: WPS226 — <reason>` for a single site.
-2. **Module-level**, in the module docstring (`flake8: noqa: WPS202 — <reason>`), when the whole file is one homogeneous concept. One home, one reason, visible in the file it governs. Also the right scope when one rule fires many times on one concept in one file: one suppression, not fourteen.
-3. There is no rung 3. Config is not a fix and is not offered as one. A change that belongs in config is a decision about the project, made by its owner outside this task; if the code in front of you seems to need it, that is a `Config notes:` observation.
+2. **Module-level**, as a `per-file-ignores` entry naming **one file and one rule**, with the receipt's constraint as a comment above it:
+   ```
+   per-file-ignores =
+       # WPS202: 11 zero-logic contract types, one surface (see receipt in <report>)
+       kot_deploy/ports.py: WPS202
+   ```
+   This is the right scope when the whole file is one homogeneous concept, or when one rule fires many times on one concept in one file: one entry, not fourteen `noqa`s. **Never use `# flake8: noqa: WPS202` for this.** As a comment line, flake8 treats any `# flake8: noqa` — with or without codes — as *ignore every rule in this file*; inside the docstring it is inert. Both spellings look like a scoped suppression and are not. A `per-file-ignores` entry is an edit to the config file, but it is not a threshold change and not a role policy: it names one file, one rule, one receipt, and a reviewer can grep it.
+3. There is no rung 3. Raising a `max-*` value, or adding a rule to a glob (`runners/*.py: WPS226`), is not a fix and is not offered as one; the first is a threshold, the second is a role policy — both are decisions about the project, made by its owner outside this task, and reach the report only as `Config notes:` observations.
 
 When the same rule earns a *receipted* suppression in a third module of the repo, that pattern goes on `Config notes:` as an observation — "three registries in this package trip WPS202; if the package is declarative by nature the owner may want a package-level value" — never as a recommendation. Two things are routinely misread here:
 

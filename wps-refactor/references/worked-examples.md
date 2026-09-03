@@ -223,16 +223,15 @@ registry.py:1: WPS202 Found too many module members: 24 > 20
 
 ### The honest fix
 
-```python
-# registry.py
-# noqa comment at module level, with the forcing reason stated:
-"""Family registry.
-
-flake8: noqa: WPS202 — this module is a flat declaration of one concept
-(the family table). Splitting it would spread a single lookup across files
-by count rather than by meaning.
-"""
+```ini
+# setup.cfg
+per-file-ignores =
+    # WPS202: registry.py is one FamilySpec + 23 instances — a flat declaration of one
+    # concept; splitting it would spread a single lookup across files by count.
+    adapters/registry.py: WPS202
 ```
+
+One file, one rule, the receipt's constraint as the comment. Not `# flake8: noqa: WPS202` in the file: as a comment line that form makes flake8 skip the *entire file for every rule* (verified on flake8 7.x — F401, WPS308, WPS421 all go silent), and inside the docstring it does nothing. Both look like a scoped suppression to a reviewer and neither is one.
 
 This is one suppression for WPS202 — one module, one concept, one reason. If a third module in the same repo turns out to need the same one, that is a fact about the project, and it goes on the report's `Config notes:` line ("three flat registries each suppress WPS202; `max-module-members` may be calibrated for a different kind of project"). The owner decides what to do with it; the task does not stop to ask.
 

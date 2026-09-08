@@ -228,8 +228,9 @@ Run this against your own diff before reporting. Each item is grep-able. Any hit
 22. An expression restructured with the same operands and branches to change its AST shape — `tuple[bool(...)]`, `and`/`or` chains standing in for `if`, `''.join(x[:1])`, a ternary relocated into an argument — with the rule's reason unaddressed
 23. `sys.stdout.write` / `sys.stderr.write` / `os.write` appearing where `print` was flagged
 24. An edit whose purpose, stated or evident, was to find out whether a rule fires
+25. A module-level function promoted to a method or classmethod with "methods don't count" as the reason, or with the member count recounted mid-decision — the honest reason is that the function is about that type (catalog D and I)
 
-Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder. Items 22–24 are invisible in a diff review; they are caught only by running the reason test on your own change before you make it.
+Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder. Items 22–25 are invisible in a diff review; they are caught only by running the reason test on your own change before you make it.
 
 ---
 

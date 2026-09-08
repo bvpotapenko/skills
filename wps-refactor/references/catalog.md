@@ -128,8 +128,9 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 ## D. Module and class shape
 
 **WPS202 — TooManyModuleMembers**
-- Measures: top-level definitions in a module.
+- Measures: top-level definitions in a module. **Methods do not count** — only top-level `def` and `class`. This asymmetry is the rule's biggest loophole; see the second cheat below and section I.
 - Cheat: move the overflow into `helpers.py` — splitting by *count*, so one concept ends up in two files and the import graph gets worse.
+- Cheat: move a module-level function onto a nearby class or record as a method or classmethod, because methods are invisible to this counter. The reasoning that gives it away is "methods don't count toward WPS202" — that is the mechanism, not a reason. It can land on the right shape by accident, which makes it worse, not better: the check is whether the function is *about that type* (section I).
 - Fix: split by **concept**, not by size. Read the member names and group them: if the module contains "things that define the model families" and "things that run a scoring pass", those are two modules with a one-directional dependency. If every member genuinely belongs to one concept and the module is just large (a registry, a protocol definition), that is a legitimate suppression case — but "one concept" is proven with the kind column (SKILL.md, homogeneity test), not asserted. A docstring calling the module "the one shared module" or "flat by design" is not evidence; a member list with one kind in it is. If the members are growing while you refactor, the module is a dump.
 
 **WPS201 — TooManyImports** and **WPS235 — TooManyImportedModuleNames**
@@ -139,7 +140,7 @@ Rule numbers shift slightly between wemake-python-styleguide major versions. Tru
 
 **WPS214 — TooManyMethods**
 - Measures: method count on a class.
-- Cheat: move methods to module-level functions taking the instance as the first argument.
+- Cheat: move methods to module-level functions taking the instance as the first argument (and note this is the exact inverse of the WPS202 cheat above — a codebase where members shuttle between module level and class level as counters demand has two respellings, not two designs).
 - Fix: the class has more than one responsibility. Group methods by *which attributes they touch* — clusters that touch disjoint attribute sets are separate classes. If all methods touch all attributes, the class is cohesive and this is a suppression candidate — after rung 0: a method that is a stub or has no caller comes out first (worked example 7), and a port the repo owns is not an external contract that fixes the method set.
 
 **WPS230 — TooManyPublicAttributes**
@@ -293,3 +294,14 @@ Reason: the count measures how many things a reader must hold. Fix: the locals a
 
 **WPS515 — `open()` without a context manager; WPS529 — implicit `.get`.**
 Mechanical, section H — listed here only because agents sometimes "fix" WPS515 by wrapping `open` in a helper that also lacks the context manager.
+
+**WPS202 by promoting functions to methods.**
+Reason: the module counter measures how many separate things a reader must hold when opening the file. Moving a function onto a class the reader already has to read satisfies that reason *when the function is about that type* — and only then. The test is the same one WPS214 uses in reverse: **does the function read that type's attributes, and would you have put it there with no linter running?** `measure(spec, data) -> Measurement` that builds a `Measurement` is `Measurement.of(...)`; `reduced_value(measurement)` that reads a measurement's fields is `measurement.reduced()`. Those are right, and the reason to state is "a type's constructor and its derived values belong to the type", never "methods don't count".
+
+Four symptoms that the move was made for the counter instead:
+- The count is *recounted* mid-decision ("how close am I to the threshold"). A move made for the right reason lands where it lands; the count is a consequence you do not audit.
+- Only enough members move to get under the line, and the rest — same kind, same relationship to the type — stay module-level.
+- The move arrives bundled with an unrelated counter trade: two functions merged, a branch inlined, a helper folded, "checking whether that pushes cognitive complexity too high". That is one member fewer and one worse function; see failure mode 4.
+- The container is chosen to make the move easy (a `NamedTuple` or dataclass invented at the same moment, in a codebase that spells records another way) rather than for what the value is.
+
+What it costs when done wrongly: the members are still there, still the same kinds, now hidden from the counter that was reporting them. The class grows until WPS214 fires — which is the counter doing its job late, and by then the class holds two concepts. Do the kind column on the module first; if it shows two kinds, the fix is the split (or the D8 move: members of the second kind become methods on the record *they* read), not a promotion of whichever members happen to fit.

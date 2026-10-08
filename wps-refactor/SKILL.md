@@ -20,6 +20,10 @@ The reliable test is not "does it lint?" It is: **after the fix, how many places
 
 ---
 
+## Before the first fix: the config is the owner's, calibrated once
+
+This skill never edits thresholds, and that rule only makes sense if the thresholds were chosen for this project. WPS defaults are one house style. Its **function-shape** rules (`max-arguments`, `max-local-variables`, `max-cognitive-score`, nesting depth) cost almost no lines to satisfy and are where the design signal is — keep them strict. Its **file-shape** rules (`max-module-members`, `max-imports`, `max-methods`) force file splits, and file splits generate imports, `__init__`s, re-exports and a test per module; on a project that is not shaped like the linter authors' they inflate a codebase without improving it. Calibrating those is the owner's decision, made once, in the config, with a line of why — *before* the first refactor, never in the middle of one. If you arrive at a task and the config is defaults on a project that plainly is not that shape, say so once, on `Config notes:`, at the start; then treat the values as absolute for the rest of the task. Every count you reason about in the task is measured against the quoted values, so quote them (see the report shape).
+
 ## The four failure modes — recognize these in your own edits
 
 ### 1. Silencing — the counter is disabled rather than satisfied
@@ -93,6 +97,10 @@ Do not philosophize about import order. Classify the violation first — this ta
 
 Follow this in order. Steps 5 and 6 are the ones that catch the failure modes above; do not skip them because the linter already went quiet.
 
+**Entry condition: the test suite is green before any structural edit.** "Behavior: unchanged" is a comparison against a baseline; a red suite has none. If the suite is red when you arrive, fix it in its own change, or report and stop. Never refactor on top of it, and never claim "verified unchanged" for an edit that landed while it was red — report the sequence as it happened.
+
+**Routing: function-shape counters do not go to the shape menu.** WPS210 (locals), WPS211 (arguments), WPS213 (expressions), WPS231 (cognitive) are statements about *what the function's job is*, and their procedure is the seam test (step 3) followed, if needed, by the locals audit. The shape menu in step 4 chooses a *home for a concept*; applied to individual variables it degenerates into "which local can I get rid of", which is the shaving cheat. A plan for one of these rules that ends with the count still over the line ("9 → 8 locals" against a cap of 5) is not a plan and is not applied.
+
 ### 1. Widen the scope before reading anything
 
 Never work from a single reported line. Run the linter over the whole module and group the output:
@@ -139,7 +147,7 @@ The concept needs exactly one place to live. Pick the **cheapest shape that make
 |---|---|---|---|
 | 0 | **Delete it** | The branch, parameter, or hook has no live caller | any |
 | 1 | **Guard clauses / early return** | Nesting encodes preconditions, not variation | WPS220, WPS231, WPS222 |
-| 2 | **A named predicate or a named intermediate value** | A boolean expression or subexpression carries meaning | WPS221, WPS222, WPS204 |
+| 2 | **A named predicate or a named intermediate value** — this rung *adds* a name; removing one is never rung 2 | A boolean expression or subexpression carries meaning | WPS221, WPS222, WPS204 |
 | 3 | **A table (dict / `MappingProxyType` registry)** | Branching selects a *value or callable* by a key; the branches differ only in what they return | WPS223, WPS226, WPS212, WPS231 |
 | 4 | **A frozen dataclass / `NamedTuple`** | Parameters or locals always travel together, or a function returns several related values | WPS211, WPS210, WPS213, ARG, PLR0913 |
 | 5 | **Enum + one mapping keyed by it** | The key set is closed and the same key drives several lookups | WPS226, WPS432, WPS223 |
@@ -188,12 +196,12 @@ Shape:           <rung number + name from the menu>
 Sweep:           grep '<old spelling>' -> <N> hits outside home   (must be 0)
 N+1 receipt:     adding <concrete new case> touches <M> place(s): <list>
 Suppressions:    none | <rule> at <scope> — <one-line reason>   (one entry per concept, not per line; each has a Rung-7 receipt below the report)
-Config:          untouched
+Config:          untouched — measured against: <the rules that fired, with their configured values, e.g. max-local-variables = 5, max-module-members = 15>
 Config notes:    none | <observation for the owner, e.g. "per-file-ignore for tests/*.py matches no file">
 Behavior:        unchanged | <what changed and why it was required>
 ```
 
-`Config: untouched` is a constant, not a status. `setup.cfg` and `pyproject.toml` are not edited by this skill and are not offered as a path: a threshold or ignore changed there weakens the rule for files you have not read, and it is the one silencing move that leaves no trace at the site it excuses. `Config notes:` is where a real observation goes — a stale ignore copied from another project, a third module in the repo needing the same suppression — stated once, for the owner to act on. It is a line in the report, not a branch the user must choose before the task can finish.
+`Config: untouched` is a constant, not a status; the quoted values after it are not — every count in the report is against them, and a reviewer who assumes different values will misjudge the receipt. `setup.cfg` and `pyproject.toml` are not edited by this skill and are not offered as a path: a threshold or ignore changed there weakens the rule for files you have not read, and it is the one silencing move that leaves no trace at the site it excuses. `Config notes:` is where a real observation goes — a stale ignore copied from another project, a third module in the repo needing the same suppression — stated once, for the owner to act on. It is a line in the report, not a branch the user must choose before the task can finish.
 
 The report is the deliverable whether the request was "check" or "fix"; the only difference is whether the `Violations:` line has an `after`. For a check, every structural finding still carries its step-3 sentence, and the one next step to offer is applying it.
 
@@ -229,8 +237,9 @@ Run this against your own diff before reporting. Each item is grep-able. Any hit
 23. `sys.stdout.write` / `sys.stderr.write` / `os.write` appearing where `print` was flagged
 24. An edit whose purpose, stated or evident, was to find out whether a rule fires
 25. A module-level function promoted to a method or classmethod with "methods don't count" as the reason, or with the member count recounted mid-decision — the honest reason is that the function is about that type (catalog D and I)
+26. A plan for WPS210/211/213/231 whose stated end state is still over the line, or that reads "fold single-use locals" / "safe eliminations" with no seam test and no locals audit on the page
 
-Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder. Items 22–25 are invisible in a diff review; they are caught only by running the reason test on your own change before you make it.
+Items 11 and 15 are the ones that cause bugs rather than ugliness. Treat them as blocking. Items 17–19 and 21 are the ones that turn a refactor task into a config negotiation; treat them as a redo of the rung ladder. Items 22–26 are invisible in a diff review; they are caught only by running the reason test on your own change before you make it.
 
 ---
 
@@ -256,7 +265,9 @@ Two rules read straight off the table:
 - **Several locals born from one call are one value.** A helper that returns a 3-tuple has a return type it did not name. Name it (a frozen record) and three locals become one. This is a *type*, not a god-object: the fields were produced together at one seam and describe one state — "the model is ready".
 - **A local consumed by exactly one later call folds into that call.** `model_info` feeds only `_provenance` → compute it inside `_provenance`. `provenance` feeds only `write_outputs` → pass the call directly, or let the writer build it. `out_dir` used once → inline it.
 
-What survives is the honest count, and in a linear runner it is 3–4: the parsed request, one prepared-state record, the result. Only if it is *still* over the line after the audit is the function doing more than one job — and the seams are the rows where the consumer set changes.
+  "Folds into that call" means the value moves to its one consumer — computed inside it, or passed as the producer's result — so a name disappears *because a phase boundary moved*. It does not mean stuffing the expression into a longer expression at the same place: `assert np.load(p).tolist() == extended` instead of `consumed = ...; assert consumed == extended` removes a name and leaves the reader holding the same thing (WPS221 will say so). If after folding the count is still over the line, the function has two jobs and the audit shows where they meet; it is not a signal to fold harder.
+
+What survives is the honest count, and in a linear runner it is 3–4: the parsed request, one prepared-state record, the result. In a **test**, the audit almost always shows an arrange block: five or six locals born from setup calls and consumed by one act — that is a builder or fixture with a domain name (`_planned(store, ...)`, `_extended(...)`), never an assertion with the setup inlined into it. Only if it is *still* over the line after the audit is the function doing more than one job — and the seams are the rows where the consumer set changes.
 
 The discriminator the displacement table relies on, stated so it can be applied: **a record is a value when its fields are born at the same seam and consumed together; it is a bag when it collects whatever happened to be in scope.** `config: dict`, a `ctx` every function reads two keys from, `**kwargs` — bags. `LoadedSession(device, adapter, loaded, patches)` returned by the one function that produces all four — a value. "Would be a god-object" is not an objection to a drafted record with its fields listed; it is an objection to an undrafted one.
 

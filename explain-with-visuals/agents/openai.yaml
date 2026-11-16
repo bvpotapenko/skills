@@ -1,0 +1,13 @@
+interface:
+  display_name: Explain with visuals
+  short_description: Create clear SVG diagrams and interactive explanations
+  default_prompt: Use $explain-with-visuals to show how this mechanism works.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

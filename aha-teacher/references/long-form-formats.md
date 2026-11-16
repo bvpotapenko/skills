@@ -10,7 +10,13 @@ Two document types. Both are markdown files delivered to the user (not chat text
 - `📓 NOTEBOOK:` — the load-bearing results as *generative prompts*: a question the learner answers in their own words, never a ready-made line to transcribe. Give the check, not the sentence — "📓 In your own words: why does squaring rescue the average deviation? (then check yourself against §2.1)". Quality bar: if the learner answered ONLY the notebook prompts, their answers would form a working summary of the document. Tell them to actually write, not nod.
 - `🎛 KNOBS:` — term-by-term dissection of a formula just presented: effect of each term growing/shrinking, behavior at edge cases, which knob the practitioner actually turns.
 
-**ASCII graphics**: keep to ~64 characters wide (mobile-safe). Rough is fine; *labeled* is mandatory — every axis, region, and threshold named. Draw the picture that carries the argument (overlapping curves for power, quadrants for covariance), never decoration. A picture the learner can redraw from memory is a proof they own the idea — say so under the important ones.
+**Graphical figures**
+
+Use `explain-with-visuals` to create SVG figures that carry the argument. Supply the teaching question, relevant facts, learner context, and the desired location in the document. Let the graphics skill choose the geometry and useful level of detail. Label axes, regions, units, thresholds, and important relationships near their visual referents. Use static spatial views, motion, or interactive 3D when those representations help the learner inspect the mechanism.
+
+Embed static figures with Markdown image syntax, for example `![Two regions overlap in a shared area](figures/overlap.svg)`. Use meaningful alternative text and a brief caption. Keep the Markdown and its figure assets together with resolvable paths at the delivery destination. Adapt file links to the host when presenting the document online. Verify the actual viewer displays the images. If SVG is unsupported, provide a PNG exported from the same figure.
+
+For motion or interactive 3D, include a representative static figure in the Markdown and link the standalone HTML version. Preserve the original SVG or scene source for later edits. A picture the learner can redraw and explain from memory supports a useful understanding check.
 
 **Numbers**: every worked number recomputed and verified before it ships. Prefer values that come out clean. When two different roads should give the same number (a direct formula and a decomposition), USE that as a planted cross-check across chapters — "matching to the digit" moments build enormous trust.
 
@@ -39,7 +45,7 @@ Two document types. Both are markdown files delivered to the user (not chat text
    ("Tasks for Chapter N", IDs like T3.1)
 
 # FINAL CHAPTER — THE MAP
-   one big ASCII concept map of everything; then compress the whole part to
+   one labeled SVG concept map made with explain-with-visuals; then compress the whole part to
    its N core ideas (N ≤ 5 per part) — this chapter converts facts to
    knowledge; then a menu of possible next parts (let the user choose)
 

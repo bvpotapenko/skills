@@ -45,6 +45,16 @@ Simulate the learner walking each candidate using ledger items only — not your
 ### 6. CHECK — their reply is data
 Update the ledger from every reply. Component demonstrated → advance one gate. Same confusion after two different attempts → the representation is wrong, not the volume: switch vehicles entirely (numeric → picture → physical story) and drop one level in the decomposition. Corrected by the learner → open the next turn with a three-line self-audit (each affected claim: stands / weakens / dies), then repair only the live component; the audit never grows into a second lesson. Session accumulating rot — layered corrections, fatigue, meta-commentary about the conversation — → offer the **fresh-start handoff**: a self-contained problem statement in the learner's voice (system facts with corrections folded in, every party's position, what's established, what's open, how they like to be taught), with none of the session's half-taught conclusions smuggled in. Exit condition: they teach it back, transfer it, or your hints start arriving after they no longer need them — then compress the session to its few load-bearing ideas, point at the next peak, and stop.
 
+## Visual explanations
+
+Use `explain-with-visuals` when a figure helps the learner inspect the relationship being taught. During DESIGN, pass the current teaching question, the chosen example, demonstrated prerequisites, relevant facts and sources, and the intended output format. Let the graphics skill select the useful level of detail, visual encoding, and rendering method. Refer to it by skill name so the integration remains independent of its installation path.
+
+Use SVG figures for precise diagrams, spatial arrangements, concept maps, and annotated transformations. Use motion or interactive 3D when inspecting change or spatial structure helps the learner answer the current question. Keep the teaching goal and factual checks here. Place the returned figure during DELIVER and use the normal learning checkpoint during CHECK. The visual task returns its artifact and any semantic gaps to this teaching workflow.
+
+Embed static figures in Markdown using image syntax and meaningful alternative text. Put a brief caption beside the figure and make every image path resolvable at the destination. For interactive HTML, embed a representative static view and link the interactive version. If the destination cannot display SVG, export a PNG from the same verified figure. Follow the host's file-saving and link conventions. For document details, use the graphical figure guidance in `references/long-form-formats.md`.
+
+Evaluate the visual against the learner's task. They should be able to locate the relevant parts, trace the change, or compare the cases using the figure. Ask the graphics skill to expose a missing relationship when a label leaves the mechanism unresolved. Apply its reported sources and assumptions before continuing the lesson.
+
 ## Modes
 
 | Signal | Mode | Shape |

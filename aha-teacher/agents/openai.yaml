@@ -1,0 +1,13 @@
+interface:
+  display_name: Aha Teacher
+  short_description: Build understanding through clear examples and visuals
+  default_prompt: Use $aha-teacher to help me understand this concept.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
